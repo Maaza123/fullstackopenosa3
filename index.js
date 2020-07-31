@@ -1,6 +1,7 @@
 const express = require('express');
-const { response } = require('express');
 const app = express();
+const morgan = require('morgan');
+const cors = require(cors);
 
 let numbers =[
     { 
@@ -27,7 +28,18 @@ let numbers =[
 
 
 app
-    .use(express.json());
+    .use(express.json())
+    .use(morgan(function (tokens, req, res) {
+        return [
+          tokens.method(req, res),
+          tokens.url(req, res),
+          tokens.status(req, res),
+          tokens.res(req, res, 'content-length'), '-',
+          tokens['response-time'](req, res), 'ms',
+          JSON.stringify(req.body)
+        ].join(' ')
+      }))
+      .use(cors())
 
 app
     .get(`/api/persons`, (request, response) => {
@@ -82,7 +94,7 @@ app
         numbers = numbers.concat(newPerson);
         res.status(200).end();
     })
-const PORT = 3003
+const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
