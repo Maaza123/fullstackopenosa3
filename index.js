@@ -28,7 +28,7 @@ let numbers =[
 
 
 app
-    .use(express.static('/build'))
+    .use(express.static('build'))
     .use(express.json())
     .use(morgan(function (tokens, req, res) {
         return [

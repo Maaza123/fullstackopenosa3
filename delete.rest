@@ -1,1 +1,1 @@
-DELETE url HTTP/1.1
+DELETE http://localhost:3003/api/numbers/1
