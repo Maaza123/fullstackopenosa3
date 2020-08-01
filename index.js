@@ -28,7 +28,6 @@ let numbers =[
 
 
 app
-    .use(express.static('build'))
     .use(express.json())
     .use(morgan(function (tokens, req, res) {
         return [
@@ -93,8 +92,10 @@ app
             id: newId
         }
         numbers = numbers.concat(newPerson);
-        res.status(200).end();
+        res.status(200).json(newPerson);
     })
+
+    .use(express.static('build'))
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
