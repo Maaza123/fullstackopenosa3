@@ -1,6 +1,10 @@
+require('dotenv').config();
+
 const express = require('express');
 const app = express();
 const morgan = require('morgan');
+
+const Number = require('./models/numbers.js')
 const cors = require('cors');
 
 let numbers =[
@@ -26,7 +30,15 @@ let numbers =[
       }
 ]         
 
+const errorHandler = (error, request, response, next) => {
+    console.log(error.message);
 
+    if(error.name === 'CastError'){
+        return response.status(400).send({error: 'malformedi id'});
+    }
+
+    next(error);
+}
 app
     .use(express.json())
     .use(morgan(function (tokens, req, res) {
@@ -39,37 +51,57 @@ app
           JSON.stringify(req.body)
         ].join(' ')
       }))
-      .use(cors())
+    .use(cors())
 
 app
-    .get(`/api/persons`, (request, response) => {
-        return response.status(200).json(numbers);
+    .get(`/api/persons`, (request, response, next) => {
+        Number.find({})
+            .then(result => {
+                response.status(200).send(result);
+            })
     })
-    .get('/api/persons/:id', (request, response) => {
-        const id = Number(request.params.id);
-        const note = numbers.find(note => note.id === id);
-        if(note){
-            response.json(note);
-        }else{
-            console.log('not found');
-            response.status(404).end();
-        }
+    .get('/api/persons/:id', (request, response, next) => {
+        Number.findById(request.params.id)    
+            .then(number => {
+                if(number){
+                    response.status(200).json(number);
+                }else{
+                    console.log('not found');
+                    response.status(404).end();
+                }
+                
+            })
+            .catch(error => {
+                next(error);
+            })
     })
-    .get('/info', (request, response) => {
-        const noteAmount = numbers.length;
-        const date = new Date();
-        return response.status(200).send(
-            `<p>Phonebook has info for ${noteAmount} people</p>
-             <p>${date}</p>`)
+    .get('/info', (request, response, next) => {
+        Number
+            .find({})
+            .then(result => {
+                console.log(result);
+                const noteAmount = result.length;
+                const date = new Date();
+                return response.status(200).send(
+                    `<p>Phonebook has info for ${noteAmount} people</p>
+                    <p>${date}</p>`)
+                    })
+            .catch(error => {
+                next(error);
+            })
+                    
     })
-    .delete('/api/persons/:id', (request, response) => {
-        const id = Number(request.params.id)
-        numbers = numbers.filter(number => number.id !== id)
-      
-        response.status(204).end()
+    .delete('/api/persons/:id', (request, response, next) => {
+        Number.findByIdAndDelete(request.params.id)
+            .then(result => {
+                response.status(204).end();
+            })
+            .catch(error => {
+                next(error);
+            })
       })
-    .post('/api/persons', (req, res) => {
-        const newId = Math.floor(Math.random() * 1000000000000);
+    
+    .post('/api/persons', (req, res, next) => {
         if(!req.body.name){
             return res.status(400).json(
                 {error: 'parameter name is missing'}
@@ -80,22 +112,40 @@ app
                 {error: 'paramater number is missing'}
             );
         }
-        const found = numbers.find(number => number.name === req.body.name);
-        if(found){
-            return res.status(400).json(
-                {error: 'Name already exists'}
-            );
-        }
-        const newPerson = {
-            name: req.body.name,
-            number: req.body.number,
-            id: newId
-        }
-        numbers = numbers.concat(newPerson);
-        res.status(200).json(newPerson);
+        Number.exists({name: req.body.name})
+            .then(found => {
+                console.log(found);
+                if(found){
+                    return res.status(400).json({error: `Person ${req.body.name} already exists`})
+                }
+                const newNumber = new Number({
+                    name: req.body.name,
+                    number: req.body.number,
+                })
+        
+                newNumber.save()
+                    .then(response => {
+                        console.log(response);
+                        res.status(200).json(response);
+                    })
+            })
+            .catch(error => {
+                next(error);
+            });
+    })
+    .put('/api/persons/:id', (request, response, next) => {
+        Number.findByIdAndUpdate(request.params.id, {number: request.body.number}, {new:true})
+            .then(result => {
+                response.status(201).json(result);
+            })
+            .catch(error => {
+                next(error);
+            })
     })
 
     .use(express.static('build'))
+    .use(errorHandler)
+
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
