@@ -32,9 +32,12 @@ let numbers =[
 
 const errorHandler = (error, request, response, next) => {
     console.log(error.message);
+    console.log(error.name);
 
     if(error.name === 'CastError'){
         return response.status(400).send({error: 'malformedi id'});
+    }else if(error.name ==='ValidationError'){
+        return response.status(400).send({error: error.message});
     }
 
     next(error);
@@ -112,26 +115,17 @@ app
                 {error: 'paramater number is missing'}
             );
         }
-        Number.exists({name: req.body.name})
-            .then(found => {
-                console.log(found);
-                if(found){
-                    return res.status(400).json({error: `Person ${req.body.name} already exists`})
-                }
-                const newNumber = new Number({
-                    name: req.body.name,
-                    number: req.body.number,
-                })
-        
-                newNumber.save()
-                    .then(response => {
-                        console.log(response);
-                        res.status(200).json(response);
-                    })
+        const newNumber = new Number({
+            name: req.body.name,
+            number: req.body.number,
+        })
+
+        newNumber.save()
+            .then(response => {
+                console.log(response);
+                res.status(200).json(response);
             })
-            .catch(error => {
-                next(error);
-            });
+            .catch(error => next(error))
     })
     .put('/api/persons/:id', (request, response, next) => {
         Number.findByIdAndUpdate(request.params.id, {number: request.body.number}, {new:true})
